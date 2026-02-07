@@ -6,12 +6,15 @@ void HeltecTrackerV2Board::begin() {
     pinMode(PIN_ADC_CTRL, OUTPUT);
     digitalWrite(PIN_ADC_CTRL, LOW); // Initially inactive
 
+    // Configure GPIO registers before releasing RTC hold for glitch-free
+    // transition on deep sleep wake (hold freezes the pad, not the registers)
     pinMode(P_LORA_PA_POWER, OUTPUT);
     digitalWrite(P_LORA_PA_POWER,HIGH);
+    rtc_gpio_hold_dis((gpio_num_t)P_LORA_PA_POWER);
 
-    rtc_gpio_hold_dis((gpio_num_t)P_LORA_PA_EN);
     pinMode(P_LORA_PA_EN, OUTPUT);
     digitalWrite(P_LORA_PA_EN,HIGH);
+    rtc_gpio_hold_dis((gpio_num_t)P_LORA_PA_EN);
     pinMode(P_LORA_PA_TX_EN, OUTPUT);
     digitalWrite(P_LORA_PA_TX_EN,LOW);
 
@@ -48,7 +51,9 @@ void HeltecTrackerV2Board::begin() {
 
     rtc_gpio_hold_en((gpio_num_t)P_LORA_NSS);
 
-    rtc_gpio_hold_en((gpio_num_t)P_LORA_PA_EN); //It also needs to be enabled in receive mode
+    // Hold GC1109 FEM pins during sleep to keep LNA active for RX wake
+    rtc_gpio_hold_en((gpio_num_t)P_LORA_PA_POWER);
+    rtc_gpio_hold_en((gpio_num_t)P_LORA_PA_EN);
 
     if (pin_wake_btn < 0) {
       esp_sleep_enable_ext1_wakeup( (1L << P_LORA_DIO_1), ESP_EXT1_WAKEUP_ANY_HIGH);  // wake up on: recv LoRa packet
